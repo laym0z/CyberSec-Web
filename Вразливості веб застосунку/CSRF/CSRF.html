@@ -132,7 +132,7 @@ await fetch('/api/delete_user', {
 </code></pre>
 <blockquote>
 <p>За відсутності цього токену сервер буде відповідати кодом <strong>400 - Bad Request</strong>:
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260217131236.png" alt="Pasted image 20260217131236.png" /></div></p>
+<div class="image-div"><img src="..\..\images\Pasted image 20260217131236.png" alt="Pasted image 20260217131236.png" /></div></p>
 </blockquote>
 <div class="callout callout-warning">CSRF токен буде потрібен тільки для POST, PUT, DELETE запитів. Тобто для запитів, які якимось чином змінюють або створююсь дані. Для GET запитів цей токен надсилати не потрібно, саме тому це може бути вразливе місце. Якщо з якихось причин GET запит використовується для модифікації даних, наприклад, то зловмисник легко скористається цією вразливістю.</div>
                             </div>

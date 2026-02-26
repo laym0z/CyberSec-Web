@@ -98,14 +98,14 @@ def login():
         }
 </code></pre>
 <div class="callout callout-warning">Тобто, якщо ми будемо вводити імена користувачів, які не є в базі даних, то буде з'являтися відповідне повідомлення про помилку завдяки якому можна перебрати існуючого користувача.</div>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203132413.png" alt="Pasted image 20260203132413.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260203132413.png" alt="Pasted image 20260203132413.png" /></div>
 
 <hr />
 <p>Замість того аби вручну перебирати всіх можливих користувачів, можна скористатися такими інструментами як <strong>hydra</strong>, <strong>ffuf</strong> або <strong>burp suite</strong>. Тут я віддаю перевагу burp suite. Для того, аби почати автоматичне перебирання варто перехопити логін запит через burp. Для цього в самій програмі треба увімкнути функцію перехоплення а в браузері мати розширення FoxyProxy (я користуюсь саме таким).</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203135251.png" alt="Pasted image 20260203135251.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260203135251.png" alt="Pasted image 20260203135251.png" /></div>
 
 <p>Для перебирання користувачів я скористався текстовим документом від <strong>seclists</strong> на 17 рядків. Фільтраційним елементом буде слугувати відповідь "user does not exist". Якщо введений користувач існує, тоді текст помилки заміниться на "invalid password".</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203135443.png" alt="Pasted image 20260203135443.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260203135443.png" alt="Pasted image 20260203135443.png" /></div>
 
 <p>У колонці "user does not exist" рядки, у яких відсутнє значення - це валідні імена користувачів. В моєму випадку - це "user" та "admin". Після цього є можливість перебрати вже пароль до цих користувачів таким же шляхом.</p>
 <blockquote>
@@ -128,14 +128,14 @@ def login():
 </code></pre>
 <hr />
 <p>Прибравши детальну візуальну інформацію у відповіді сервера, яка давала змогу перебирати користувача, ми, здавалося б, унеможливили таку атаку. АЛЕ знайти існуючого користувача все ще можливо, не за такими очевидними речами як відповідь з помилкою. Це все ще можна зробити дивлячись на час відповіді від серверу. До прикладу:</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203150236.png" alt="Pasted image 20260203150236.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260203150236.png" alt="Pasted image 20260203150236.png" /></div>
 
 <p>Скориставшись командою <strong>curl</strong> я можу зробити POST запит до свого серверу з деякими даними.</p>
 <pre><code class="language-bash">curl -w &quot;Time: %{time_total}&quot; -X POST -H &quot;Content-Type: application/json&quot; -d '{&quot;email_or_username&quot;:&quot;test&quot;,&quot;password&quot;:&quot;test&quot;}' http://192.168.100.10:8000/login
 </code></pre>
 <p>Опція <code>-w</code> дозволяє виводити метрики запиту. Тут використовується метрика "time_total", яка відображає повний час запиту. Якщо надсилати дані з неіснуючими користувачами, то час відповіді буде в середньому ~0.006.. s.</p>
 <p>Але якщо ввести існуюче ім'я користувача і не правильний пароль до нього то ясна річь, що доступу ми не отримаєм, та ми отримали деяку іншу інформацію, повний час запиту сягає <strong>0.235 s.</strong>:</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203151021.png" alt="Pasted image 20260203151021.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260203151021.png" alt="Pasted image 20260203151021.png" /></div>
 
 <p>Час повного запиту збільшився, що свідчить про існування цього користувача в базі даних. Якщо раніше надіслані дані не проходили і першу перевірку (чи існує такий користувач?), то зараз цей запит пройшов і перейшов до перевірки паролю, тому час відповіді збільшився.</p>
 <p>Під конкретно цю задачу я написав невеличкий bash скрипт, який буде автоматично перебирати всіх користувачів зі списку і помічатиме "валідним" той запит, який тривав більше <strong>0.07</strong> секунди (цей час виставлявся в наслідок калібрування): </p>
@@ -155,7 +155,7 @@ done &lt;usernames.txt
 </code></pre>
 <blockquote>
 <p>Результат:
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203163343.png" alt="Pasted image 20260203163343.png" /></div></p>
+<div class="image-div"><img src="..\..\images\Pasted image 20260203163343.png" alt="Pasted image 20260203163343.png" /></div></p>
 </blockquote>
 <hr />
 <p>Такої атаки можна уникнути створивши навмисно однаковий час відповіді для валідних і не валідних імен користувачів. Це можна зробити завдяки штучній функції перевірки паролю, яка буде виконуватися якщо введеного користувача не існує:</p>
@@ -184,7 +184,7 @@ done &lt;usernames.txt
 </code></pre>
 <hr />
 <p>В результаті мною написаний скрипт вже не спрацює (і не тільки мій скрипт) бо визначити користувача таким шляхом вже не можливо, всі спроби повертатимуть майже  однаковий час:</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260204110609.png" alt="Pasted image 20260204110609.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260204110609.png" alt="Pasted image 20260204110609.png" /></div>
                             </div>
                         </div>
                     </body>

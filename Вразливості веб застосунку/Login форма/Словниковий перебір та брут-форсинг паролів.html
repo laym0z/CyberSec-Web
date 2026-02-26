@@ -67,7 +67,7 @@
 </code></pre>
 <p>Результат: пароль до <strong>user</strong> - це ... <strong>user</strong>..</p>
 <blockquote>
-<p><div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260204113225.png" alt="Pasted image 20260204113225.png" /></div></p>
+<p><div class="image-div"><img src="..\..\images\Pasted image 20260204113225.png" alt="Pasted image 20260204113225.png" /></div></p>
 </blockquote>
 <p>Для того аби ускладнити перебір паролів треба встановити обмежено дозволену кількість запитів. Оскільки застосунок написаний на Flask, можна скористатися бібліотекою <strong>flask_limiter</strong>.</p>
 <pre><code class="language-python">from flask_limiter import Limiter
@@ -90,7 +90,7 @@ def login():
 <div class="callout callout-info">**Redis** використовуватиметься для збереження цих тимчасових блокувань. Інакше якщо довіритися стандартному збереженню - після рестарту застосунку всі обмеження зникнуть.</div>
 
 <p>Після декількох спроб підібрати пароль (код 401) сервер почне повертати код 429 (занадто багато запитів) </p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260204115139.png" alt="Pasted image 20260204115139.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260204115139.png" alt="Pasted image 20260204115139.png" /></div>
 
 <div class="callout callout-note">Відступ</div>
 <blockquote>
@@ -120,10 +120,10 @@ def login():
 <blockquote>
 <p>Якщо постійно змінювати <strong>логін</strong> ну або <strong>IP</strong> то ліміт ніколи не буде досягнутий. Якщо застосувати раніше використаний скрип для перебору користувачів, то це буде наглядна демонстрація:</p>
 </blockquote>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260205123538.png" alt="Pasted image 20260205123538.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260205123538.png" alt="Pasted image 20260205123538.png" /></div>
 <p>Ні один запит не повертає помилку 429.</p>
 <hr />
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260205124129.png" alt="Pasted image 20260205124129.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260205124129.png" alt="Pasted image 20260205124129.png" /></div>
 <blockquote>
 <p>Redis сховище</p>
 </blockquote>
@@ -146,7 +146,7 @@ def login():
 Довжина паролю: 20 символів
 Вміст паролю: всі можливі випадкові символи
 В результаті підбір паролю може займати... дуже багато:
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260205134950.png" alt="Pasted image 20260205134950.png" /></div></p>
+<div class="image-div"><img src="..\..\images\Pasted image 20260205134950.png" alt="Pasted image 20260205134950.png" /></div></p>
 </blockquote>
 <p>Та оскільки більшість використовують пароль який легко запам'ятати, час підбору може упасти. Але навіть так можна ще вигадати доволі міцний пароль.</p>
 <hr />
@@ -178,7 +178,7 @@ def login():
     return errors
 </code></pre>
 <blockquote>
-<p><div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260209173024.png" alt="Pasted image 20260209173024.png" /></div></p>
+<p><div class="image-div"><img src="..\..\images\Pasted image 20260209173024.png" alt="Pasted image 20260209173024.png" /></div></p>
 </blockquote>
 <hr />
 <h2>Двох-факторна автентифікація (2FA)</h2>

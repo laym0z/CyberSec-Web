@@ -73,7 +73,7 @@
 <pre><code class="language-bash">sudo ufw default deny incoming
 sudo ufw default deny outgoing
 </code></pre>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260110153544.png" alt="Pasted image 20260110153544.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260110153544.png" alt="Pasted image 20260110153544.png" /></div>
 
 <div class="callout callout-warning">Блокування `outgoing` трафіку матиме свої наслідки, про які буде згадано далі</div>
 
@@ -81,7 +81,7 @@ sudo ufw default deny outgoing
 <h2>Incoming</h2>
 <div class="callout callout-note">Віртуальна машина використовує NAT мережу, тому аби отримувати доступ до неї з хоста треба використовувати проброс портів в налаштуваннях **VirtualBox**. Тому в правилах firewall'у використовується шлюз `10.0.2.2`. Грубо говорячи цей шлюз - це хост.</div>
 <blockquote>
-<p><div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260112144404.png" alt="Pasted image 20260112144404.png" /></div></p>
+<p><div class="image-div"><img src="..\..\images\Pasted image 20260112144404.png" alt="Pasted image 20260112144404.png" /></div></p>
 </blockquote>
 <p>Для роботи застосунку треба надати <code>incoming</code> дозвіл на <strong>8000 HTTP</strong> порт тільки з хоста:</p>
 <pre><code class="language-bash">sudo ufw allow from 10.0.2.2 to any port 8000 proto tcp
@@ -127,7 +127,7 @@ sudo ufw allow out 443/tcp
 </code></pre>
 <hr />
 <h2>Фінальний вигляд таблиці firewall'у</h2>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260112090629.png" alt="Pasted image 20260112090629.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260112090629.png" alt="Pasted image 20260112090629.png" /></div>
                             </div>
                         </div>
                     </body>

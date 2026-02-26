@@ -67,16 +67,16 @@
 <h2>З'єднання з базою даних</h2>
 <p>Обмеження можливості з'єднання для непотрібних машин є критичним. По стандарту PostgreSQL налаштований на <strong>Unix Domain Socket (UDS)</strong> з'єднання. Тобто доступ до бази даних може отримати лише машина, на якій вона знаходиться (localhost). Але за потреби можна налаштувати <strong>TCP/IP</strong> з'єднання. Це може стати у нагоді, якщо база даних і застосунок, який використовує цю базу, знаходяться на різних серверах або якщо треба віддалений доступ для адміна.</p>
 <p>Якщо база даних налаштована на <strong>TCP/IP</strong>, то має бути суворе обмеження доступу. Варто встановити список віддалених хостів які мають право на доступ. Для цього в конфігураційному файлі PostgreSQL виділене окреме поле в якому зазначені всі дозволені віддалені хости:</p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260109155655.png" alt="Pasted image 20260109155655.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260109155655.png" alt="Pasted image 20260109155655.png" /></div>
 
 <p>Як можна побачити на зображені вище, PostgreSQL налаштований на <strong>UDS</strong> з'єднання, тому з дозволених з'єднань лише <code>localhost</code>.</p>
 <p>У випаду з цим веб застосунком, <strong>UDS</strong> конфігурація підходить, оскільки база даних і сам застосунок знаходяться на одному сервері.</p>
 <hr />
 <p>Навіть якщо в конфігураційному файлі <code>postgresql.conf</code> в списку IP адрес для прослуховування залишається лише <code>localhost</code> то не варто обділяти увагою <code>pg_hba.conf</code> де також є налаштування, які вказують хто куди і звідки може під'єднатися. В нашому випадку конфігурація вірна і налаштована лише на локальний хост (вона така по стандарту) </p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260112102334.png" alt="Pasted image 20260112102334.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260112102334.png" alt="Pasted image 20260112102334.png" /></div>
 
 <p>Якщо перевірити порт, на якому працює PostgreSQL, то можна запевнитися, що він не працює публічно: </p>
-<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260112102946.png" alt="Pasted image 20260112102946.png" /></div>
+<div class="image-div"><img src="..\..\images\Pasted image 20260112102946.png" alt="Pasted image 20260112102946.png" /></div>
 
 <hr />
 <h3>Варто залишити scram-sha-256 бо він краще за md5</h3>
