@@ -1,0 +1,131 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">PostgreSQL</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="../API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="../CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="../File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="../Login форма/User enumeration.html">User enumeration</a></li>
+<li><a href="../Login форма/Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="../Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="../XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="Firewall.html">Firewall</a></li>
+<li><a href="HTTPS.html">HTTPS</a></li>
+<li><a href="Internal Network.html">Internal Network</a></li>
+<li><a href="PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="../Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="../Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <div class="callout callout-note">Оскільки база даних буде знаходитися на одному сервері з веб застосунком - методи по впровадженню шифрування даних для передачі по мережі задіяні не будуть.</div>
+
+<hr />
+<h2>З'єднання з базою даних</h2>
+<p>Обмеження можливості з'єднання для непотрібних машин є критичним. По стандарту PostgreSQL налаштований на <strong>Unix Domain Socket (UDS)</strong> з'єднання. Тобто доступ до бази даних може отримати лише машина, на якій вона знаходиться (localhost). Але за потреби можна налаштувати <strong>TCP/IP</strong> з'єднання. Це може стати у нагоді, якщо база даних і застосунок, який використовує цю базу, знаходяться на різних серверах або якщо треба віддалений доступ для адміна.</p>
+<p>Якщо база даних налаштована на <strong>TCP/IP</strong>, то має бути суворе обмеження доступу. Варто встановити список віддалених хостів які мають право на доступ. Для цього в конфігураційному файлі PostgreSQL виділене окреме поле в якому зазначені всі дозволені віддалені хости:</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260109155655.png" alt="Pasted image 20260109155655.png" /></div>
+
+<p>Як можна побачити на зображені вище, PostgreSQL налаштований на <strong>UDS</strong> з'єднання, тому з дозволених з'єднань лише <code>localhost</code>.</p>
+<p>У випаду з цим веб застосунком, <strong>UDS</strong> конфігурація підходить, оскільки база даних і сам застосунок знаходяться на одному сервері.</p>
+<hr />
+<p>Навіть якщо в конфігураційному файлі <code>postgresql.conf</code> в списку IP адрес для прослуховування залишається лише <code>localhost</code> то не варто обділяти увагою <code>pg_hba.conf</code> де також є налаштування, які вказують хто куди і звідки може під'єднатися. В нашому випадку конфігурація вірна і налаштована лише на локальний хост (вона така по стандарту) </p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260112102334.png" alt="Pasted image 20260112102334.png" /></div>
+
+<p>Якщо перевірити порт, на якому працює PostgreSQL, то можна запевнитися, що він не працює публічно: </p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260112102946.png" alt="Pasted image 20260112102946.png" /></div>
+
+<hr />
+<h3>Варто залишити scram-sha-256 бо він краще за md5</h3>
+<p>Головним недоліком md5 є те, що абсолютно різні введення можуть мати однаковий хеш, тобто md5 не є стійким до колізії. Наявність такої проблеми є доволі обгрунтованою причиною аби перейти на кращий метод хешування, такий як scram-sha-256. Тепер цей метод є стандартом для PostgreSQL починаючи з 10 версії.</p>
+<hr />
+<h2>Конфігурація</h2>
+<blockquote>
+<p><code>postgresql.conf</code></p>
+</blockquote>
+<p>В конфігураційному файлі варто увімкнути функцію хешування паролів за методом <code>scram-sha-256</code>:</p>
+<pre><code class="language-bash">password_encryption = scram-sha-256
+</code></pre>
+<p>Також для відслідковування робити бази даних варто увімкнути логування:</p>
+<pre><code class="language-bash">log_connections = on
+log_disconnections = on
+logging_collector = on
+</code></pre>
+<blockquote>
+<p>Обов'язковий рестарт для впровадження змін</p>
+</blockquote>
+<pre><code class="language-bash">sudo systemctl restart postgresql
+</code></pre>
+<p><strong>Автоматичне оновлення:</strong></p>
+<pre><code class="language-bash">apt install unattended-upgrades
+</code></pre>
+<blockquote>
+<p>Цей пакет може автоматично та без нагляду завантажувати та встановлювати оновлення безпеки, дбаючи про те, щоб встановлювати лише пакети з налаштованого джерела APT, та перевіряючи запити <code>dpkg</code> щодо змін у файлах конфігурації.</p>
+</blockquote>
+<hr />
+<h2>Налаштування доступу</h2>
+<p>За стандартом на початку робити з PostgreSQL у нього вже є користувач <code>postgres</code> , який має <code>root</code> права. Та використовувати його для роботи з базою даних для нашого застосунку не варто. Правильним рішенням буде створити окремого користувача і обмежити його лише потрібними правами. Наприклад заборонити цьому користувачу створювати нові бази даних і дозволити лише працювати з існуючими. Такий користувач зможе лише створювати таблиці в конкретно виділеній базі даних та маніпулювати їхнім вмістом.</p>
+<p>Ми знаємо, що у нас уже створена база даних <code>demo_web_app</code>:</p>
+<pre><code class="language-sql">CREATE DATABASE demo_web_app;
+REVOKE ALL ON DATABASE demo_web_app FROM PUBLIC;
+</code></pre>
+<blockquote>
+<p><code>REVOKE</code> - забирає всі раніше надані привілеї з ролі або користувача на об'єкти бази даних.</p>
+</blockquote>
+<p>Для цієї бази даних буде створений і призначений окремий користувач <code>demo_web_user</code>:</p>
+<pre><code class="language-sql">CREATE USER demo_web_user WITH ENCRYPTED PASSWORD '&lt;password&gt;';
+GRANT CONNECT ON DATABASE demo_web_app TO demo_web_user;
+GRANT USAGE ON SCHEMA public TO demo_web_user;
+</code></pre>
+<p>Далі варто лише надати користувачеві права на використання лише відведених SQL команд в роботі з усіма таблицями та на створення нових таблиць:</p>
+<pre><code class="language-sql">GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO demo_web_user;
+GRANT CREATE ON SCHEMA public TO demo_web_user;
+</code></pre>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

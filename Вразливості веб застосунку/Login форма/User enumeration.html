@@ -1,0 +1,192 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">User enumeration</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="../API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="../CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="../File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="User enumeration.html">User enumeration</a></li>
+<li><a href="Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="../Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="../XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="../Конфігурація/Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="../Конфігурація/Firewall.html">Firewall</a></li>
+<li><a href="../Конфігурація/HTTPS.html">HTTPS</a></li>
+<li><a href="../Конфігурація/Internal Network.html">Internal Network</a></li>
+<li><a href="../Конфігурація/PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="../Конфігурація/SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="../Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="../Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <hr />
+<p>Брутфорс даних є одним з найбанальніших способів отримати несанкціонований доступ до системи. Розглядаючи саму просту систему авторизації (single factor login), яка в додачу немає обмежень по кількості запитів, можна спробувати перебрати всі можливі паролі до користувача. Але перед тим як перебирати паролі до якогось користувача - треба знати ім'я самого користувача. </p>
+<hr />
+<blockquote>
+<p>Функціонал перевірки введених імені користувача та паролю</p>
+</blockquote>
+<pre><code class="language-python">@app.route(&quot;/login&quot;, methods=[&quot;POST&quot;, &quot;GET&quot;])
+def login():
+    if request.method == &quot;POST&quot;:
+        data = request.get_json(silent=True)
+        email_or_username = data[&quot;email_or_username&quot;]
+        password = data[&quot;password&quot;]
+        user = Users.query.filter_by(username=email_or_username).first()
+        if not user:
+            return jsonify({&quot;error&quot;: &quot;user does not exists&quot;}), 401
+        if user.check_password(password):
+            login_user(user, remember=True)
+            return jsonify({&quot;status&quot;: &quot;ok&quot;}), 200
+        return jsonify({&quot;error&quot;: &quot;invalid password&quot;}), 401
+    logout_user()
+    return render_template(&quot;login.html&quot;)
+</code></pre>
+<p>В нашому випадку сервер після перевірки введених користувачем даних окрім статус коду повертає повідомлення про помилку авторизації. І вже на клієнтській частині буде відображатися повідомлення відповіді сервера:</p>
+<pre><code class="language-js">const response = await fetch(&quot;/login&quot;, {
+            method: &quot;POST&quot;,
+            headers: { &quot;Content-Type&quot;: &quot;application/json&quot; },
+            body: JSON.stringify({
+                email_or_username: email_or_username,
+                password: password
+            })
+        })
+        const data = await response.json();
+        if (!response.ok){
+            results.textContent = data.error;
+        }
+</code></pre>
+<div class="callout callout-warning">Тобто, якщо ми будемо вводити імена користувачів, які не є в базі даних, то буде з'являтися відповідне повідомлення про помилку завдяки якому можна перебрати існуючого користувача.</div>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203132413.png" alt="Pasted image 20260203132413.png" /></div>
+
+<hr />
+<p>Замість того аби вручну перебирати всіх можливих користувачів, можна скористатися такими інструментами як <strong>hydra</strong>, <strong>ffuf</strong> або <strong>burp suite</strong>. Тут я віддаю перевагу burp suite. Для того, аби почати автоматичне перебирання варто перехопити логін запит через burp. Для цього в самій програмі треба увімкнути функцію перехоплення а в браузері мати розширення FoxyProxy (я користуюсь саме таким).</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203135251.png" alt="Pasted image 20260203135251.png" /></div>
+
+<p>Для перебирання користувачів я скористався текстовим документом від <strong>seclists</strong> на 17 рядків. Фільтраційним елементом буде слугувати відповідь "user does not exist". Якщо введений користувач існує, тоді текст помилки заміниться на "invalid password".</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203135443.png" alt="Pasted image 20260203135443.png" /></div>
+
+<p>У колонці "user does not exist" рядки, у яких відсутнє значення - це валідні імена користувачів. В моєму випадку - це "user" та "admin". Після цього є можливість перебрати вже пароль до цих користувачів таким же шляхом.</p>
+<blockquote>
+<p>[!success] Для того щоб уникнути такої участі, <strong>не варто</strong> надавати користувачеві більше інформації, аніж потрібно. Тобто після невдалої спроби достатньо сказати, що введені дані не валідні, а що саме - користувачеві знати нема потреби. А також варто обмежити користувача у спробах логіну, але це вже далі.</p>
+<p>Оновлена функція логіну</p>
+</blockquote>
+<pre><code class="language-python">@app.route(&quot;/login&quot;, methods=[&quot;POST&quot;, &quot;GET&quot;])
+def login():
+    if request.method == &quot;POST&quot;:
+        data = request.get_json(silent=True)
+        email_or_username = data[&quot;email_or_username&quot;]
+        password = data[&quot;password&quot;]
+        user = Users.query.filter_by(username=email_or_username).first()
+        if not user or not user.check_password(password):
+            return jsonify({&quot;error&quot;: &quot;invalid credentials&quot;}), 401
+        login_user(user, remember=True)
+        return jsonify({&quot;status&quot;: &quot;ok&quot;}), 200
+    logout_user()
+    return render_template(&quot;login.html&quot;)
+</code></pre>
+<hr />
+<p>Прибравши детальну візуальну інформацію у відповіді сервера, яка давала змогу перебирати користувача, ми, здавалося б, унеможливили таку атаку. АЛЕ знайти існуючого користувача все ще можливо, не за такими очевидними речами як відповідь з помилкою. Це все ще можна зробити дивлячись на час відповіді від серверу. До прикладу:</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203150236.png" alt="Pasted image 20260203150236.png" /></div>
+
+<p>Скориставшись командою <strong>curl</strong> я можу зробити POST запит до свого серверу з деякими даними.</p>
+<pre><code class="language-bash">curl -w &quot;Time: %{time_total}&quot; -X POST -H &quot;Content-Type: application/json&quot; -d '{&quot;email_or_username&quot;:&quot;test&quot;,&quot;password&quot;:&quot;test&quot;}' http://192.168.100.10:8000/login
+</code></pre>
+<p>Опція <code>-w</code> дозволяє виводити метрики запиту. Тут використовується метрика "time_total", яка відображає повний час запиту. Якщо надсилати дані з неіснуючими користувачами, то час відповіді буде в середньому ~0.006.. s.</p>
+<p>Але якщо ввести існуюче ім'я користувача і не правильний пароль до нього то ясна річь, що доступу ми не отримаєм, та ми отримали деяку іншу інформацію, повний час запиту сягає <strong>0.235 s.</strong>:</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203151021.png" alt="Pasted image 20260203151021.png" /></div>
+
+<p>Час повного запиту збільшився, що свідчить про існування цього користувача в базі даних. Якщо раніше надіслані дані не проходили і першу перевірку (чи існує такий користувач?), то зараз цей запит пройшов і перейшов до перевірки паролю, тому час відповіді збільшився.</p>
+<p>Під конкретно цю задачу я написав невеличкий bash скрипт, який буде автоматично перебирати всіх користувачів зі списку і помічатиме "валідним" той запит, який тривав більше <strong>0.07</strong> секунди (цей час виставлявся в наслідок калібрування): </p>
+<pre><code class="language-bash">#!/bin/bash
+
+RED='\e[31m'
+WHITE='\e[0m'
+PASSWORD=&lt;random characters&gt;
+while read line; do
+        time=$(curl -s -o /dev/null -w %{time_total} -X POST -H &quot;Content-Type: application/json&quot; -d &quot;{\&quot;email_or_username\&quot;:\&quot;$line\&quot;,\&quot;password\&quot;:\&quot;$PASSWORD\&quot;}&quot; http://192.168.100.10:8000/login)
+        if (( $(echo &quot;${time} &gt; 0.07&quot; | bc -l) )); then
+                echo -e &quot;${WHITE} ${line} FOUND&quot;
+        else
+                echo -e &quot;${RED} ${line}: ${time}&quot;
+        fi
+done &lt;usernames.txt
+</code></pre>
+<blockquote>
+<p>Результат:
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260203163343.png" alt="Pasted image 20260203163343.png" /></div></p>
+</blockquote>
+<hr />
+<p>Такої атаки можна уникнути створивши навмисно однаковий час відповіді для валідних і не валідних імен користувачів. Це можна зробити завдяки штучній функції перевірки паролю, яка буде виконуватися якщо введеного користувача не існує:</p>
+<pre><code class="language-python">def fake_password_check(invalid_password):
+    dammy_password=&quot;$2a$12$wtZfOTnA.IOA7MqgO3KnaO3y9CeVK0PnsM/Hg8Vpq8e0kLT4OLJ9u&quot;
+    return bcrypt.check_password_hash(dammy_password, invalid_password)
+</code></pre>
+<blockquote>
+<p>Оновлена функція логіну</p>
+</blockquote>
+<pre><code class="language-python">def login():
+    if request.method == &quot;POST&quot;:
+        data = request.get_json(silent=True)
+        email_or_username = data[&quot;email_or_username&quot;]
+        password = data[&quot;password&quot;]
+        user = Users.query.filter_by(username=email_or_username).first()
+        if not user:
+            fake_password_check(password)
+            return jsonify({&quot;error&quot;: &quot;invalid credentials&quot;}), 401
+        elif not user.check_password(password):
+            return jsonify({&quot;error&quot;: &quot;invalid credentials&quot;}), 401
+        login_user(user, remember=True)
+        return jsonify({&quot;status&quot;: &quot;ok&quot;}), 200
+    logout_user()
+    return render_template(&quot;login.html&quot;)
+</code></pre>
+<hr />
+<p>В результаті мною написаний скрипт вже не спрацює (і не тільки мій скрипт) бо визначити користувача таким шляхом вже не можливо, всі спроби повертатимуть майже  однаковий час:</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260204110609.png" alt="Pasted image 20260204110609.png" /></div>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

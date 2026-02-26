@@ -1,0 +1,168 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">Налаштування користувача</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="Login форма/User enumeration.html">User enumeration</a></li>
+<li><a href="Login форма/Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="Конфігурація/Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="Конфігурація/Firewall.html">Firewall</a></li>
+<li><a href="Конфігурація/HTTPS.html">HTTPS</a></li>
+<li><a href="Конфігурація/Internal Network.html">Internal Network</a></li>
+<li><a href="Конфігурація/PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="Конфігурація/SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <hr />
+<p>На поточному етапі мій Flask застосунок запускається від імені користувача <code>server</code>. Проблема полягає в тому, що цьому користувачеві надано занадто багато привілеїв, в яких мій застосунко не потребує:</p>
+<div class="image-div"><img src="..\..\Converter\HTMLPages\images\Pasted image 20260221112003.png" alt="Pasted image 20260221112003.png" /></div>
+
+<hr />
+<p>Це може бути проблемою, якщо на сервері присутня RCE вразливість. Якщо вразливий код, який організовує віддалене підключення, знаходиться на сервері і запускається через взаємодію сервера з цим кодом, то фактично це <code>server</code> користувач запустить код посередньо і відповідно зловмисник отримає доступ до віддаленої оболонки саме до цього користувача. Тому важливо створити окремого користувача для запуску сервера, який буде повністю обмежений в діях та буде мати лише доступ до тих функції, які потрібні йому для роботи. Таким чином, якщо зловмисник отримає доступ, то фактично нічого не зможе зробити.</p>
+<hr />
+<div class="callout callout-note">Важливо</div>
+<blockquote>
+<p>Якщо код буде налаштований на підключення до якогось не ординарного порту, то підключення буде не можливе, оскільки firewall буде блокувати цей порт. Але він дозволяє вихідне з'єднання на порту 80. Він відкритий на вихід, щоб оновлювати систему. Тому якщо RCE налаштоване на цей порт, то firewall його не заблокує.
+<div class="image-div"><img src="..\..\Converter\HTMLPages\images\Pasted image 20260221114129.png" alt="Pasted image 20260221114129.png" /></div></p>
+</blockquote>
+<hr />
+<p>Для початку варто створити нового користувача:</p>
+<pre><code class="language-bash">sudo adduser --system --no-create-home --group flaskapp
+</code></pre>
+<div class="callout callout-note">Цей користувач скоріше як інструмент для робити, аніж повноцінний користувач. Оскільки він не має доступу до shell, не має домашньої директорії, не має sudo.</div>
+
+<p>Права на володіння директорією, де знаходиться застосунок, варто передати новому користувачу:</p>
+<pre><code class="language-bash">sudo chown -R flaskapp:flaskapp /var/www/demo-web-app
+</code></pre>
+<hr />
+<p>Під час розробки застосунок запускався завдяки команді в терміналі. Прийшов час позбавитися цього і створити окремий сервіс в операційний системі, який буде відповідати за роботу застосунку. </p>
+<hr />
+<p>Для початку конфігурації варто встановити WSGI (Web Server Gateway Interface) сервер, Gunicorn. Gunicorn — написаний виключно на Python, з простою конфігурацією та декількома реалізаціями робочих процесів для налаштування продуктивності.</p>
+<p>В одній директорії з застосунком треба створити конфігураційний файл, який буде передаватися gunicorn'у від час запуску:</p>
+<pre><code class="language-python">import os
+
+workers = int(os.environ.get('GUNICORN_PROCESSES', '6'))
+threads = int(os.environ.get('GUNICORN_THREADS', '12'))
+bind = os.environ.get('GUNICORN_BIND', '0.0.0.0:8000')
+secure_scheme_headers = { 'X-Forwarded-Proto': 'https' }
+</code></pre>
+<ul>
+<li><strong>workers</strong> - <code>кількість ядер*2+1</code></li>
+<li><strong>threads</strong> - <code>workers*2</code> </li>
+<li><strong>bind</strong> - прослуховування на порту 8000</li>
+</ul>
+<div class="callout callout-note">Можна було би налаштувати **nginx**, який би грав роль проксі і перенаправляв запити з порту 443 на порт 8000, тоді застосунок доводилося б запускати на локальному хості: 127.0.0.1:8000</div>
+<ul>
+<li><strong>secure_scheme_headers</strong> - Flask бачить http, але насправді це https</li>
+</ul>
+<hr />
+<p>Щоб створити свою системну службу треба створити конфігураційний файл, який буде описувати її роботу:</p>
+<pre><code class="language-bash">sudo vim /etc/systemd/system/flaskapp.service
+</code></pre>
+<p>Саме тут вказана робоча середа і користувача, від чийого імені й буде запускатися застосунок. Також в рядку з використанням команди <code>gunicorn</code> будуть передаватися мої само-підписані сертифікати для https з'єднання:</p>
+<pre><code class="language-bash">[Unit]
+Description=Demo Flask App
+After=network.target
+
+[Service]
+User=flaskapp
+Group=flaskapp
+WorkingDirectory=/var/www/demo-web-app/app
+Environment=&quot;PATH=/var/www/demo-web-app/venv/bin&quot;
+ExecStart=/var/www/demo-web-app/venv/bin/gunicorn \
+        --config=/var/www/demo-web-app/app/wsgi.py \
+        --certfile=/var/www/demo-web-app/app/cert/cert.pem \
+        --keyfile=/var/www/demo-web-app/app/cert/key.pem \
+        main:app
+Restart=always
+# --- Security ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/demo-web/uploads
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<div class="callout callout-warning">Важливо не забути прибрати рядок запуску з головного коду застосунку:</div>
+<blockquote>
+<p><code>python
+app.run(port=8000, host='0.0.0.0', ssl_context=("cert/cert.pem", "cert/key.pem"))</code></p>
+</blockquote>
+<div class="callout callout-warning">Також не менш важливим є встановлення доступу на читання і записування в конкретній директорії. Під час того, як я змінив шлях збереження завантажених користувачами аватарок я стикався з помилко `read-only directory`, оскільки забув змінити шлях в конфігурації сервісу `flaskapp.service`:</div>
+<blockquote>
+<p><code>bash
+ReadWritePaths=/var/lib/demo-web/uploads</code></p>
+</blockquote>
+<hr />
+<p>Щоб застосувати нововведення треба перезапустити конфігурацію менеджера <code>systemd</code>, увімкнути та запустити саму службу:</p>
+<pre><code class="language-bash">sudo systemctl daemon-relaod
+sudo systemctl enable flaskapp
+sudo systemctl start flaskapp
+</code></pre>
+<p>Відслідковувати логи цієї служби можна за командою: </p>
+<pre><code class="language-bash">journalctl -u flaskapp -f
+</code></pre>
+<hr />
+<p>Тепер навіть якщо зловмисник якимось чином отримає віддалений доступ до оболонки, то він буде повністю обмежений у своїх діях.</p>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

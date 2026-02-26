@@ -1,0 +1,106 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">Internal Network</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="../API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="../CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="../File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="../Login форма/User enumeration.html">User enumeration</a></li>
+<li><a href="../Login форма/Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="../Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="../XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="Firewall.html">Firewall</a></li>
+<li><a href="HTTPS.html">HTTPS</a></li>
+<li><a href="Internal Network.html">Internal Network</a></li>
+<li><a href="PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="../Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="../Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <hr />
+<p>Для того аби тестувати безпеку серверу, який знаходиться на віртуальній машині, я використовував Kali Linux яка теж знаходиться на віртуальній машині. Але обоє знаходилися в NAT мережі і тому не могли контактувати між собою простим шляхом. Тому я вирішив створити Internal Network (внутрішню мережу) між цими віртуальними машинами. </p>
+<p>Для початку на обох машин варто змінити адаптер і дати <strong>СХОЖЕ</strong> ім'я:</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260202171403.png" alt="Pasted image 20260202171403.png" /></div>
+
+<hr />
+<p>Але оскільки DHCP по стандарту немає довелося роздати обом по статичній IP адресі:</p>
+<h2>Server</h2>
+<pre><code class="language-bash">sudo vim /etc/netplan/01-intnet.yaml
+</code></pre>
+<pre><code class="language-bash">network:
+  version: 2
+  ethernets:
+    enp0s3:
+      addresses:
+        - 192.168.100.10/24
+
+</code></pre>
+<pre><code class="language-bash">sudo netplan apply
+</code></pre>
+<hr />
+<h2>Kali</h2>
+<pre><code class="language-bash">sudo vim /etc/network/interfaces
+</code></pre>
+<pre><code class="language-bash">auto eth0
+iface eth0 inet static
+    address 192.168.100.20
+    netmask 255.255.255.0
+</code></pre>
+<pre><code class="language-bash">sudo systemctl restart networking
+</code></pre>
+<p>Перевірити роботу мережі можна простим пінгуванням.</p>
+<div class="callout callout-warning">Але важливо зазначити, що оскільки це лише внутрішня мережа - доступу в Інтернет машини не матимуть!</div>
+
+<hr />
+<p>Також в моєму випадку треба додати в firewall серверу правило на дозвіл підключення від IP Kali:</p>
+<pre><code class="language-bash">sudo ufw insert 3 allow from 192.168.100.20 to any port 8000 proto tcp
+</code></pre>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

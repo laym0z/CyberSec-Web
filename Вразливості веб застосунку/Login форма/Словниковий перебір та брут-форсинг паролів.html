@@ -1,0 +1,193 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">Словниковий перебір та брут-форсинг паролів</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="../API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="../CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="../File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="User enumeration.html">User enumeration</a></li>
+<li><a href="Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="../Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="../XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="../Конфігурація/Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="../Конфігурація/Firewall.html">Firewall</a></li>
+<li><a href="../Конфігурація/HTTPS.html">HTTPS</a></li>
+<li><a href="../Конфігурація/Internal Network.html">Internal Network</a></li>
+<li><a href="../Конфігурація/PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="../Конфігурація/SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="../Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="../Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <hr />
+<p>Можливість підібрати користувача вже відсутня, але перебрати пароль все ще можна, оскільки обмежень по введенням немає. Припустимо, що зловмисник все ж таки знає ім'я користувача <strong>user</strong>. Скориставшись інструментом <strong>ffuf</strong> він може перебрати до нього пароль:</p>
+<pre><code class="language-bash">ffuf -u http://192.168.100.10:8000/login -w passwords.txt -X POST -d '{&quot;email_or_username&quot;: &quot;user&quot;, &quot;password&quot;: &quot;FUZZ&quot;}' -H 'Content-Type: application/json' -mc 200
+</code></pre>
+<p>Результат: пароль до <strong>user</strong> - це ... <strong>user</strong>..</p>
+<blockquote>
+<p><div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260204113225.png" alt="Pasted image 20260204113225.png" /></div></p>
+</blockquote>
+<p>Для того аби ускладнити перебір паролів треба встановити обмежено дозволену кількість запитів. Оскільки застосунок написаний на Flask, можна скористатися бібліотекою <strong>flask_limiter</strong>.</p>
+<pre><code class="language-python">from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+import redis
+...
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[&quot;200 per day&quot;, &quot;50 per hour&quot;]
+    storage_uri=&quot;redis://127.0.0.1:6379/0&quot;
+)
+</code></pre>
+<p>Наприклад можна встановити 5 запитів на 10 хвилин:</p>
+<pre><code class="language-python">@app.route(&quot;/login&quot;, methods=[&quot;POST&quot;, &quot;GET&quot;])
+@limiter.limit(&quot;5 per 10 minutes&quot;)
+def login():
+    ...
+</code></pre>
+<div class="callout callout-info">**Redis** використовуватиметься для збереження цих тимчасових блокувань. Інакше якщо довіритися стандартному збереженню - після рестарту застосунку всі обмеження зникнуть.</div>
+
+<p>Після декількох спроб підібрати пароль (код 401) сервер почне повертати код 429 (занадто багато запитів) </p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260204115139.png" alt="Pasted image 20260204115139.png" /></div>
+
+<div class="callout callout-note">Відступ</div>
+<blockquote>
+<p>Таке обмеження буде блокувати endpoint <strong>/login</strong>, навіть якщо ми спробуємо зробити GET запит  аби просто отримати сторінку - ми все одно стикнемося з помилкою 429. Щоб такого не було варто відділити функціонал логіну до API <strong>/api/login</strong>. А сам <strong>/login</strong> буде слугувати для запиту отримання сторінки. З endpoint'ом реєстрації варто вчинити так само.</p>
+</blockquote>
+<p>Кращою практикою буде зберігати не лише IP, з якого робиться спроба автентифікації, а й сам логін (комбіновані ключі). Функція <code>rate_limit_key()</code> буде перевіряти існування введеного користувача, і якщо він існує - повертатиме і IP і ID користувача разом. Якщо користувач не існує - поверне його як <code>unknown</code> в sha256 форматі.</p>
+<pre><code class="language-python">def rate_limit_key():
+    if request.method == &quot;POST&quot;:
+        data = request.get_json()
+    login = data[&quot;email_or_username&quot;] if data else &quot;&quot;
+
+    user = (
+            Users.query.filter_by(email=login).first()
+            if validators.email(login)
+            else Users.query.filter_by(username=login).first()
+            )
+    ip = get_remote_address()
+
+    if user:
+        return f&quot;{ip}:user_id:{user.id}&quot;
+
+    digest = hashlib.sha256(login.encode()).hexdigest()[:16]
+    return f&quot;{ip}:unknown:{digest}&quot;
+
+</code></pre>
+<div class="callout callout-warning">Важливо</div>
+<blockquote>
+<p>Якщо постійно змінювати <strong>логін</strong> ну або <strong>IP</strong> то ліміт ніколи не буде досягнутий. Якщо застосувати раніше використаний скрип для перебору користувачів, то це буде наглядна демонстрація:</p>
+</blockquote>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260205123538.png" alt="Pasted image 20260205123538.png" /></div>
+<p>Ні один запит не повертає помилку 429.</p>
+<hr />
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260205124129.png" alt="Pasted image 20260205124129.png" /></div>
+<blockquote>
+<p>Redis сховище</p>
+</blockquote>
+<hr />
+<div class="callout callout-warning">Висновок</div>
+<blockquote>
+<p>Так можна лише розтягнути час. Після того як обмеження спадуть - зловмисник може продовжити перебирати паролі, і так по колу. Або визначити кількість спроб і час тимчасового блокування і надсилати спроби з періодичністю. В цьому випадку, 1 запит кожні 2 хвилини. Повільно, але працює.</p>
+<p>[!success] Для запобігання атакам методом грубої сили необхідний багатогранний підхід, що включає:
+- політику використання надійних паролів
+- багатофакторну автентифікацію 
+- моніторинг спроб входу 
+- CAPTCHA.</p>
+</blockquote>
+<hr />
+<h2>Політика надійних паролів</h2>
+<p>Використання надійного та складного паролю є критично важливим фактором для запобігання отримання доступу не бажаними особами. Складні паролі важко забрутфорсити, а якщо вони ще й унікальні, тобто ніде не використані, то словникова атака теж не страшна. 
+Бази даних деяких сервісів чи то навмисно чи в результаті злому можуть стати публічними. Паролі з цих баз можуть слугувати у формуванні списків з використовуваними паролями. І якщо Ваш пароль став публічним, то ще якийсь Ваш акаунт який використовує цей пароль потенційно стає вразливим до словникового перебору. Але якщо він став публічним але сам по собі є складним, то підібрати до нього хеш буде дуже витратно і по ресурсам і по часу.</p>
+<blockquote>
+<p>[!example] Приклад
+Довжина паролю: 20 символів
+Вміст паролю: всі можливі випадкові символи
+В результаті підбір паролю може займати... дуже багато:
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260205134950.png" alt="Pasted image 20260205134950.png" /></div></p>
+</blockquote>
+<p>Та оскільки більшість використовують пароль який легко запам'ятати, час підбору може упасти. Але навіть так можна ще вигадати доволі міцний пароль.</p>
+<hr />
+<blockquote>
+<p>[!question] Як злиті паролі зламують?
+Оскільки паролі в базах не зберігаються у звичайному вигляді а хешуються, то коли ці хеші потрапляють до рук зловмисника - він починає брут-форсити їх. Якщо паролі були слабкими, то їх можна перебрати вже й відомими словниками, або гібридним перебором. А от якщо пароль дійсно складний (довгий, випадкові символи які не несуть якогось сенсу в купі) - то його вже треба перебирати по символу (брут-форсити), і час до результату такої операції буде залежати від складності паролю.</p>
+</blockquote>
+<p>Функція <strong>brypt</strong>, яка використовується тут для хешування паролів, додає так звану "сіль". <strong>Сіль</strong> - це набір випадкових символів, який додається до введеного користувачем паролю і потім все це хешується і зберігається в базі. Навіть якщо два користувача введуть одинакові паролі, то їхні хеші будуть різні.</p>
+<hr />
+<p>Відповідальність за надійне зберігання паролю лежить на сервісі. А вже відповідальність за надійність самого паролю лежить на користувачеві. Якщо користувач все ж таки не бажає вигадувати надійний пароль - для цього існує політика надійного паролю, яка оцінює його якість, перевіряючи на наявність великих і малих літер, символів і чисел. Деякі сервіси навіть перевіряють чи не є введений пароль вже публічно відомим.</p>
+<blockquote>
+<p>Проста функція, яка буде перевіряти пароль на довжину на наявність спеціальних символів та чисел:</p>
+</blockquote>
+<pre><code class="language-python">def validate_password(password: str):
+
+    errors = []
+    if len(password) &lt; 12:
+        errors.append(&quot;The password must be at least 12 characters long&quot;)
+    if not re.search(r&quot;[A-Z]&quot;, password):
+        errors.append(&quot;The password must contain at least one uppercase letter&quot;)
+    if not re.search(r&quot;[a-z]&quot;, password):
+        errors.append(&quot;The password must contain at least one lowercase letter&quot;)
+    if not re.search(r&quot;\d&quot;, password):
+        errors.append(&quot;Add at least 1 number&quot;)
+    if not re.search(r&quot;[!@#$%^&amp;*()_+=\-{}[\]:;\&quot;'&lt;&gt;,.?/]&quot;, password):
+        errors.append(&quot;Add at least 1 special character&quot;)
+    if &quot; &quot; in password:
+        errors.append(&quot;Password cannot contain spaces&quot;)
+    return errors
+</code></pre>
+<blockquote>
+<p><div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260209173024.png" alt="Pasted image 20260209173024.png" /></div></p>
+</blockquote>
+<hr />
+<h2>Двох-факторна автентифікація (2FA)</h2>
+<p>...</p>
+<hr />
+<h2>CAPTCHA</h2>
+<p>...</p>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

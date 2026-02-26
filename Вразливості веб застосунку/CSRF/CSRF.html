@@ -1,0 +1,142 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">CSRF</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="../API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="../File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="../Login форма/User enumeration.html">User enumeration</a></li>
+<li><a href="../Login форма/Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="../Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="../XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="../Конфігурація/Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="../Конфігурація/Firewall.html">Firewall</a></li>
+<li><a href="../Конфігурація/HTTPS.html">HTTPS</a></li>
+<li><a href="../Конфігурація/Internal Network.html">Internal Network</a></li>
+<li><a href="../Конфігурація/PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="../Конфігурація/SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="../Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="../Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <hr />
+<div class="callout callout-note">"Змінні" для зручності</div>
+<blockquote>
+<p>Демо застосунок, який тестується - <strong>цільовий сервер</strong></p>
+</blockquote>
+<p>Для максимально простої демонстрації я створив невеличкий сайт, який при завантажені буде робити <code>fetch</code> запит на мій цільовий сервер на endpoint <code>/api/change_name</code> (умова - я маю буди авторизованим в ньому як якийсь користувач, щоб зробити запит на зміну імені):</p>
+<pre><code class="language-js">const res = fetch('http://192.168.100.10:8000/api/change_name', {
+        method: &quot;PUT&quot;,
+        headers: { &quot;Content-Type&quot;: &quot;application/json&quot;,&quot;Origin&quot;:&quot;http://192.168.100.10:8000&quot;},
+        body: JSON.stingify({
+            name: &quot;CSRFhere&quot; 
+        })
+})
+
+const data = res.json()
+console.log(data)
+</code></pre>
+<p>Якщо завантажити сторінку, то зміни не будуть відображені (зміна імені авторизованого користувача), а на стороні сервера відобразиться наступний запит:</p>
+<pre><code class="language-bash">&quot;OPTIONS /api/change_name HTTP/1.1&quot; 200 -
+</code></pre>
+<p>Справа в тому, що Cross-Origin Resource Sharing (CORS) для методів HTTP-запитів, які можуть спричинити побічні ефекти на дані сервера (зокрема, методи HTTP, крім GET або POST з певними типами MIME), вимагає, щоб браузери «перевіряли» запит, запитуючи підтримувані методи від сервера за допомогою методу запиту HTTP OPTIONS, а потім, після «затвердження» сервером, надсилали фактичний запит. Це деяка розвідка, яка перевіряє чи дозволяє сервер cross-origin запити.  </p>
+<p>Оскільки сервер приймає лише json дані, то і клієнтська частина має відправляти дані в json форматі. Тут це робиться через JS, і саме тому має відбуватися запит OPTIONS. Та оскільки така перевірка не проходить то й змін відповідних немає. Можна було б обійтись і без JS:</p>
+<pre><code class="language-html">&lt;form action=&quot;http://192.168.100.10:8000/api/change_name&quot; method=&quot;PUT&quot;&gt;
+    &lt;input type=&quot;hidden&quot; name=&quot;name&quot; value=&quot;CSRFValue&quot;&gt;
+&lt;/form&gt;
+&lt;script&gt;
+    document.forms[0].submit();
+&lt;/script&gt;
+</code></pre>
+<p>Але такі запити не здатні надсилати json формат даних, який нам і потрібен. Тому на сервері буде виникати помилка читання цих даних. Це можна вважати своєрідним захистом, але він скоріше як додатковий а не головний. Якби сервер зчитував дані які надсилає form, то тоді запити проходили б.</p>
+<hr />
+<h2>Заходи безпеки</h2>
+<p>На сервері варто встановити наступну конфігурацію:</p>
+<pre><code class="language-bash">SESSION_COOKIE_SAMESITE=&quot;Lax&quot;
+</code></pre>
+<ul>
+<li>
+<p><code>Strict</code> — cookie не передається при переході з іншого сайту</p>
+</li>
+<li>
+<p><code>Lax</code> — дозволяє GET переходи</p>
+</li>
+<li>
+<p><code>None</code> — небезпечно (потрібен HTTPS)</p>
+</li>
+</ul>
+<hr />
+<p>Також варто запобігти CSRF атакам на сервері головною лінією оборони  - CSRF токеном. Для цього для застосунку Flask варто використати бібліотеку <code>flask-wtf</code>. В цій бібліотеці є функція генерування токену та його перевірки:
+`</p>
+<pre><code class="language-python">from flask_wtf import CSRFProtect
+
+app = Flask(__name__)
+csrf = CSRFProtect(app)
+</code></pre>
+<p>В свою чергу на стороні клієнта CSRF токен буде зберігатися в <code>&lt;meta&gt;</code> тегу на сторінці:</p>
+<pre><code class="language-html">&lt;meta name=&quot;csrf-token&quot; content=&quot;{{ csrf_token() }}&quot;&gt;
+</code></pre>
+<p>І в кожному запиті <code>POST</code>, <code>DELETE</code>, <code>PUT</code> в заголовку має міститися поле з CSRF токеному:</p>
+<pre><code class="language-js">const csrfToken = document
+        .querySelector('meta[name=&quot;csrf-token&quot;]')
+        .getAttribute('content');
+await fetch('/api/delete_user', {
+            method: &quot;DELETE&quot;,
+            credentials: &quot;same-origin&quot;,
+            headers: { &quot;Content-Type&quot;: &quot;application/json&quot;,
+                &quot;X-CSRFToken&quot;: csrfToken
+            },
+            ...
+</code></pre>
+<blockquote>
+<p>За відсутності цього токену сервер буде відповідати кодом <strong>400 - Bad Request</strong>:
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260217131236.png" alt="Pasted image 20260217131236.png" /></div></p>
+</blockquote>
+<div class="callout callout-warning">CSRF токен буде потрібен тільки для POST, PUT, DELETE запитів. Тобто для запитів, які якимось чином змінюють або створююсь дані. Для GET запитів цей токен надсилати не потрібно, саме тому це може бути вразливе місце. Якщо з якихось причин GET запит використовується для модифікації даних, наприклад, то зловмисник легко скористається цією вразливістю.</div>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

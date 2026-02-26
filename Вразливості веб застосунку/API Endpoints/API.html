@@ -1,0 +1,107 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">API</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="../CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="../File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="../Login форма/User enumeration.html">User enumeration</a></li>
+<li><a href="../Login форма/Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="../Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="../XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="../Конфігурація/Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="../Конфігурація/Firewall.html">Firewall</a></li>
+<li><a href="../Конфігурація/HTTPS.html">HTTPS</a></li>
+<li><a href="../Конфігурація/Internal Network.html">Internal Network</a></li>
+<li><a href="../Конфігурація/PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="../Конфігурація/SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="../Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="../Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <hr />
+<p>API - Application Programming Interface слугує як посередник між програмами. В цьому застосунку використовуються API endpoint'и для взаємодії між клієнтом і сервером. 
+До прикладу <code>/api/login</code> - endpoint для авторизації, який обробляє введені користувачем дані та надає або забороняє доступ. Він викликається зі сторінки <code>/login</code> під час натискання на відповідну клавішу, але також його можна викликати і безпосередньо. наприклад, через термінал командою <code>curl</code>:</p>
+<pre><code class="language-bash">curl -k -H &quot;Content-Type: application/json&quot; -d '{&quot;email_or_username&quot;: &quot;user&quot;, &quot;password&quot;: &quot;user&quot;}' https://192.168.100.10:8000/api/login
+</code></pre>
+<blockquote>
+<p>В моєму випадку це поверне помилку 400, оскільки сервер очікує CSRF токен в header'і, який я не надав. Але за відсутності такої перевірки - команда поверне код 200, сесійний токен та токен запам'ятовування.</p>
+</blockquote>
+<hr />
+<p>Дуже часто у таких endpoint'ів є прив'язка до ролі. Тобто за логікою застосунку він викликається лише від імені, наприклад, модератора. У цьому застосунку є функція додавання завдань для користувачів, і цю функцію може виконували лише модератор. Але на стороні сервера в цьому API не відбувається перевірка ролі:</p>
+<pre><code class="language-python">@app.route(&quot;/api/add_task&quot;, methods=[&quot;POST&quot;])
+@login_required
+def add_task():
+    data = request.get_json(silent=True)
+    ...
+</code></pre>
+<p>Ця функція потребує, аби користувач, який робить звернення, був авторизованим (<code>@login_required</code>) але знову ж таки, перевірки ролі немає. Саме тому запит до нього може зробити навіть звичайний користувач:</p>
+<pre><code class="language-bash">curl -b &quot;session=...&quot; -k -H &quot;Content-Type: application/json&quot; -d '{&quot;task_name&quot;:&quot;sdfsf&quot;,&quot;task_description&quot;:&quot;sdfsd&quot;,&quot;task_assignment&quot;:&quot;user&quot;}' https://192.168.100.10:8000/api/add_task
+</code></pre>
+<p>Або API видалення користувача, яка має належати вже адміністратору, але знову не проводить відповідну перевірку:</p>
+<pre><code class="language-python">@app.route(&quot;/api/delete_user&quot;, methods=[&quot;DELETE&quot;])
+@login_required
+def delete_user():
+    data = request.get_json(silent=True)
+    if Users.query.filter_by(username=data[&quot;username&quot;]).first():
+    ...
+</code></pre>
+<div class="callout callout-note">Для роботи з наведеними вище API достатньо надати cookie звичайного користувача.</div>
+
+<hr />
+<p>Аби уникнути такої участі в моделі таблиці користувачів був створений метод який перевіряє, чи має поточний користувач потрібну роль:</p>
+<pre><code class="language-python">    def has_role(self, role_name: str) -&gt; bool:
+        return any(role.name == role_name for role in self.roles)
+</code></pre>
+<p>Далі в потрібних API можна викликати цей метод:</p>
+<pre><code class="language-python">if not current_user.has_role(&quot;admin&quot;):
+        return jsonify({&quot;status&quot;: &quot;error&quot;, &quot;message&quot;: &quot;this user does not have permission&quot;}), 403
+</code></pre>
+<p>В разі якщо користувач без належних прав доступу спробує звернутися до API, яке запитує права доступу, то у відповідь отримає помилку <strong>403 Forbidden</strong>.</p>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

@@ -1,0 +1,113 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">Надмірне розкриття даних</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="../API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="../CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="../File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="../Login форма/User enumeration.html">User enumeration</a></li>
+<li><a href="../Login форма/Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="../XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="../Конфігурація/Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="../Конфігурація/Firewall.html">Firewall</a></li>
+<li><a href="../Конфігурація/HTTPS.html">HTTPS</a></li>
+<li><a href="../Конфігурація/Internal Network.html">Internal Network</a></li>
+<li><a href="../Конфігурація/PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="../Конфігурація/SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="../Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="../Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <hr />
+<p>API endpoint'и використовуються для обробки як запитів на додавання\модифікацію, так і запитів для отримання даних. Інколи API за замовчуванням надсилаюсь у відповідь на запит ну надто багато зайвої інформації, яка явно не потрібна для відображення на стороні клієнта. Такі відповіді часто фільтруються вже на стороні самого клієнта і в результаті відображається лише потрібна інформація. Тобто, зловмисник має змогу перехопити цю відповідь ще до того як вона дійде до клієнта для фільтрації та отримати повну відповідь. </p>
+<hr />
+<blockquote>
+<p>[!example] Приклад
+У мого застосунку є API, яке повертає імена та ролі всіх користувачів (окрім адміна) для відображення на сторінці:</p>
+</blockquote>
+<pre><code class="language-python">@app.route(&quot;/api/get_all_users&quot;, methods=[&quot;GET&quot;])
+@login_required
+def get_all_users():
+    if not current_user.has_role(&quot;admin&quot;):
+        return jsonify({&quot;status&quot;: &quot;error&quot;, &quot;message&quot;: &quot;this user does not have permission&quot;}), 403
+    excluded = [&quot;admin&quot;]
+    users = Users.query.filter(~Users.roles.any(Role.name.in_(excluded))).all()
+    result = [
+        {
+            &quot;user&quot;: user.username,
+            &quot;role&quot;: [role.name for role in user.roles]
+        }
+        for user in users
+    ]
+    return jsonify(result), 200
+</code></pre>
+<blockquote>
+<p>Вище наведений API надає у відповідь ЛИШЕ ім'я користувача та його роль. Надання ролі може зовсім трошки підпадати під категорію overexposed, але така логіка застосунку. На дошці адміна генерується список всіх користувачів та їх ролей для редагування.</p>
+</blockquote>
+<p>Було б набагато страшніше, якби змінна результату генерувалася наступним чином:</p>
+<pre><code class="language-python">result = [
+        {
+            &quot;user&quot;: jsonify(user.to_dict())
+        }
+        for user in users
+    ]
+</code></pre>
+<div class="callout callout-note">`user.to_dict()` поверне абсолютно весь вміст рядка з таблиці кожного користувача, в тому числі й **хеш паролю.**</div>
+
+<div class="callout callout-warning">Це вже явний перебір</div>
+
+<hr />
+<h2>Як запобігти цьому?</h2>
+<ul>
+<li>Не варто сподіватися на фільтрація даних на клієнтській частині, її варто забезпечити на стороні серверу</li>
+<li>Під час створення API endpoint'у завжди варто турбуватися питанням хто саме повинен мати доступ до нього, і відповідно які дані можна передавати</li>
+<li>Якщо endpoint відповідає чутливою інформацією, то варто переконатися, що такі відповіді не спричинять загрозу безпеці</li>
+</ul>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

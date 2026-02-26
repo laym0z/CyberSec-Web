@@ -1,0 +1,135 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">Firewall</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="../API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="../CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="../File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="../Login форма/User enumeration.html">User enumeration</a></li>
+<li><a href="../Login форма/Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="../Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="../XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="Firewall.html">Firewall</a></li>
+<li><a href="HTTPS.html">HTTPS</a></li>
+<li><a href="Internal Network.html">Internal Network</a></li>
+<li><a href="PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="../Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="../Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <div class="callout callout-warning">Весь застосунок з усім функціоналом знаходяться на віртуальній машині, і відповідно всі налаштування будуть спрямовані на те, аби створити коректну мережеву комунікацію між **хостом** та цією **віртуальною машиною**. Доступ до веб застосунку не доступний з **WAN** і навіть в **LAN** а лише для **хоста**!</div>
+
+<hr />
+<p>Для безпечної роботи як завжди варто обмежувати доступ до не потрібних ділянок застосунку. У випадку з базою даних PostgreSQL яка може працювати публічно, варто встановити правила, які будуть забороняти з'єднання з 5432 портом (стандартний порт PostgreSQL), якщо вхідні адреси звісно не виняткові. </p>
+<hr />
+<p>Для початку конфігурації варто встановити загальні правила Firewall. Сервер, на якому тримається весь функціонал застосунку, працює на <strong>Linux Ubuntu Server</strong>. По стандарту він має вбудований Firewall <strong>UFW</strong>, який і буде використаний для налаштування контролю трафіку.</p>
+<p>Під використанням терміну загальних правил Firewall'у мається на увазі повне блокування вхідного і вихідного трафіку. Після чого вже варто додавати виняткові правила для коректної роботи.</p>
+<hr />
+<p>Як і говорилося раніше, для початку треба заблокувати повністю всі з'єднання наступними командами:</p>
+<pre><code class="language-bash">sudo ufw default deny incoming
+sudo ufw default deny outgoing
+</code></pre>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260110153544.png" alt="Pasted image 20260110153544.png" /></div>
+
+<div class="callout callout-warning">Блокування `outgoing` трафіку матиме свої наслідки, про які буде згадано далі</div>
+
+<hr />
+<h2>Incoming</h2>
+<div class="callout callout-note">Віртуальна машина використовує NAT мережу, тому аби отримувати доступ до неї з хоста треба використовувати проброс портів в налаштуваннях **VirtualBox**. Тому в правилах firewall'у використовується шлюз `10.0.2.2`. Грубо говорячи цей шлюз - це хост.</div>
+<blockquote>
+<p><div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260112144404.png" alt="Pasted image 20260112144404.png" /></div></p>
+</blockquote>
+<p>Для роботи застосунку треба надати <code>incoming</code> дозвіл на <strong>8000 HTTP</strong> порт тільки з хоста:</p>
+<pre><code class="language-bash">sudo ufw allow from 10.0.2.2 to any port 8000 proto tcp
+</code></pre>
+<blockquote>
+<p>В моєму випадку встановлено дозвіл під'єднання до серверу лише з однієї IP адреси, але в реальному сценарії якщо веб застосунок публічно доступний всім, то й правило слід змінити до відповідних умов. Тобто дозволити будь кому під'єднуватись до цього порту:</p>
+</blockquote>
+<pre><code class="language-bash">sudo ufw allow from any to any port 8000 proto tcp
+</code></pre>
+<hr />
+<p>Також для подальшої зручної роботи треба надати дозвіл на <strong>22 SSH</strong> порт:</p>
+<pre><code class="language-bash">sudo ufw allow from 10.0.2.2 to any port 22 proto tcp
+</code></pre>
+<p>І на завершення варто затвердити той факт, що вказана IP адреса не матиме більше доступу до інших портів:</p>
+<pre><code class="language-bash">sudo ufw deny from 10.0.2.2
+</code></pre>
+<hr />
+<h2>Outgoing</h2>
+<p>Саме тут лежить невеличкий підводний камінь. Якщо заблокувати весь вихідний трафік то всі служби, які знаходяться на сервері, не зможуть отримувати доступ до своїх серверів для того щоб банально оновитися.</p>
+<p>Для прикладу команда оновлення пакетів Linux дистрибутиву на базі Debian не спрацює, бо вихідний трафік повністю прикритий:</p>
+<pre><code class="language-bash">sudo apt update
+</code></pre>
+<p>Для того щоб такого не траплялося треба  додати декілька винятків:</p>
+<pre><code class="language-bash">sudo ufw allow out to any port 53 proto udp
+sudo ufw allow out to any port 53 proto tcp
+sudo ufw allow out 80/tcp
+sudo ufw allow out 443/tcp
+</code></pre>
+<p>Тут всі потрібні порти для коректної комунікації служб з потрібними для них серверами (<strong>HTTP/HTTPS</strong> - 80/433, <strong>DNS</strong> - 53).</p>
+<hr />
+<h2>Загальне блокування порту PostgreSQL</h2>
+<p>Для повної ізоляції гарною практикою буде заблокувати будь які зовнішні спроби з'єднання до 5432 порту, оскільки ця можливість не буде використовуватися.</p>
+<pre><code class="language-bash">sudo ufw insert 3 deny 5432/tcp
+</code></pre>
+<hr />
+<h2>Конфігураційний файл</h2>
+<p>Якщо сервер підтримує IPv6 але він не використовується, то варто вимкнути його:</p>
+<pre><code class="language-bash">sudo nano /etc/default/ufw
+</code></pre>
+<pre><code class="language-bash">IPv6=no
+</code></pre>
+<pre><code class="language-bash">sudo ufw reload
+</code></pre>
+<hr />
+<h2>Фінальний вигляд таблиці firewall'у</h2>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260112090629.png" alt="Pasted image 20260112090629.png" /></div>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

